@@ -1,0 +1,71 @@
+#!/usr/bin/env Rscript
+library(argparse)
+library(easySCFr)
+main <- function(args) {
+  # 检查输入文件是否存在
+  if (!file.exists(args$input)) {
+    stop(paste("Error: Input file", args$input, "does not exist!"))
+  }
+  # 检查输入文件扩展名是否为 .rds
+  if (!grepl("\\.rds$", args$input, ignore.case = TRUE)) {
+    stop("Error: Input file must be a .rds file!")
+  }
+  # 检查输出目录是否可写
+  output_dir <- dirname(args$output)
+  if (!dir.exists(output_dir)) {
+    dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+  }
+  if (file.access(output_dir, mode = 2) == -1) {
+    stop(paste("Error: Output directory", output_dir, "is not writable!"))
+  }
+  # 读取 RDS 文件
+  message("Reading input file: ", args$input)
+  sce <- tryCatch(
+    {
+      readRDS(args$input)
+    },
+    error = function(e) {
+      stop(paste("Error reading RDS file:", e$message))
+    }
+  )
+  # 检查是否是 SingleCellExperiment 对象
+  if (!inherits(sce, "Seurat")) {
+    stop("Error: Input file must be a Seurat object!")
+  }
+  # 保存为 HDF5
+  message("Saving to HDF5: ", args$output)
+  tryCatch(
+    {
+      saveH5(sce, args$output)
+      message("Successfully saved to ", args$output)
+    },
+    error = function(e) {
+      stop(paste("Error saving HDF5 file:", e$message))
+    }
+  )
+}
+if (!interactive()) {
+  # 命令行参数解析
+  parser <- ArgumentParser(description = "Convert RDS (SingleCellExperiment) to HDF5")
+  parser$add_argument(
+    "-i", "--input",
+    required = TRUE,
+    help = "Input .rds file (SingleCellExperiment)"
+  )
+  parser$add_argument(
+    "-o", "--output",
+    default = "output.h5",
+    help = "Output HDF5 file path (default: output.h5)"
+  )
+  args <- parser$parse_args()
+  # 执行主函数
+  tryCatch(
+    {
+      main(args)
+    },
+    error = function(e) {
+      message("Error: ", e$message)
+      quit(status = 1)  # 非零退出码表示错误
+    }
+  )
+}
