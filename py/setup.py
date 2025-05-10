@@ -17,11 +17,11 @@ setup(
     long_description=open("README.md").read(),
     packages=find_packages(),
     zip_safe=False,
-    # entry_points={
-    #     "console_scripts": [
-    #         "easyBio=easyBio.easyBio:main",
-    #     ]
-    # },
+    entry_points={
+        "console_scripts": [
+            "easy-scf-tool-py=easySCFpy.cli:main",
+        ]
+    },
     install_requires=["anndata", "h5py", "scipy", "numpy"],
     package_data={"Utils": ["Utils/*"]},
     classifiers=[
