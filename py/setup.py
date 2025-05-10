@@ -19,7 +19,7 @@ setup(
     zip_safe=False,
     entry_points={
         "console_scripts": [
-            "easy-scf-tool-py=easySCFpy.cli:main",
+            "easy-scf-tool=easySCFpy.cli:main",
         ]
     },
     install_requires=["anndata", "h5py", "scipy", "numpy"],
