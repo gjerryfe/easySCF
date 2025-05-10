@@ -2,22 +2,14 @@
 import argparse
 import os
 import sys
+from pathlib import Path
+from easySCFpy import loadH5, saveH5
 import anndata
-import h5py
 
 def convert_h5_to_h5ad(input_path, output_path):
     """Convert H5 file to h5ad format."""
     try:
-        with h5py.File(input_path, 'r') as h5_file:
-            # Create AnnData object with all components
-            adata = anndata.AnnData(
-                X=h5_file['X'][:],
-                obs=dict(h5_file['obs']),
-                var=dict(h5_file['var']),
-                uns=dict(h5_file['uns']),
-                obsm={k: v[:] for k, v in h5_file['obsm'].items()},
-                varm={k: v[:] for k, v in h5_file['varm'].items()}
-            )
+        adata = loadH5(input_path)
         adata.write_h5ad(output_path)
         print(f"Successfully converted {input_path} to {output_path}")
     except Exception as e:
@@ -28,24 +20,7 @@ def convert_h5ad_to_h5(input_path, output_path):
     """Convert h5ad file to H5 format."""
     try:
         adata = anndata.read_h5ad(input_path)
-        with h5py.File(output_path, 'w') as h5_file:
-            # Store all AnnData components
-            h5_file.create_dataset('X', data=adata.X)
-            
-            # Store obs, var, uns
-            for key, value in adata.obs.items():
-                h5_file.create_dataset(f'obs/{key}', data=value.values)
-            for key, value in adata.var.items():
-                h5_file.create_dataset(f'var/{key}', data=value.values)
-            for key, value in adata.uns.items():
-                h5_file.create_dataset(f'uns/{key}', data=str(value))
-                
-            # Store obsm and varm
-            for key, value in adata.obsm.items():
-                h5_file.create_dataset(f'obsm/{key}', data=value)
-            for key, value in adata.varm.items():
-                h5_file.create_dataset(f'varm/{key}', data=value)
-                
+        saveH5(adata, output_path)
         print(f"Successfully converted {input_path} to {output_path}")
     except Exception as e:
         print(f"Error converting h5ad to H5: {str(e)}", file=sys.stderr)
