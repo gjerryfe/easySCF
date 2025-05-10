@@ -91,6 +91,12 @@ def main():
         convert_rds_to_h5(args.input, args.output)
     elif input_ext == '.h5' and output_ext == '.rds':
         convert_h5_to_rds(args.input, args.output)
+    # R+Python combined conversion (RDS -> H5 -> h5ad)
+    elif input_ext == '.rds' and output_ext == '.h5ad':
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix='.h5') as tmp:
+            convert_rds_to_h5(args.input, tmp.name)
+            convert_h5_to_h5ad(tmp.name, args.output)
     else:
         print("Error: Unsupported conversion pair", file=sys.stderr)
         print("Supported conversions:", file=sys.stderr)
