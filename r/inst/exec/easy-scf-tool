@@ -6,10 +6,7 @@ main <- function(args) {
   if (!file.exists(args$input)) {
     stop(paste("Error: Input file", args$input, "does not exist!"))
   }
-  # 检查输入文件扩展名是否为 .rds
-  if (!grepl("\\.rds$", args$input, ignore.case = TRUE)) {
-    stop("Error: Input file must be a .rds file!")
-  }
+  
   # 检查输出目录是否可写
   output_dir <- dirname(args$output)
   if (!dir.exists(output_dir)) {
@@ -18,46 +15,73 @@ main <- function(args) {
   if (file.access(output_dir, mode = 2) == -1) {
     stop(paste("Error: Output directory", output_dir, "is not writable!"))
   }
-  # 读取 RDS 文件
-  message("Reading input file: ", args$input)
-  sce <- tryCatch(
-    {
-      readRDS(args$input)
-    },
-    error = function(e) {
-      stop(paste("Error reading RDS file:", e$message))
+  
+  # 根据输入文件扩展名判断转换方向
+  if (grepl("\\.rds$", args$input, ignore.case = TRUE)) {
+    # RDS → HDF5 转换
+    message("Detected RDS input, converting to HDF5...")
+    sce <- tryCatch(
+      {
+        readRDS(args$input)
+      },
+      error = function(e) {
+        stop(paste("Error reading RDS file:", e$message))
+      }
+    )
+    if (!inherits(sce, "Seurat")) {
+      stop("Error: Input RDS file must be a Seurat object!")
     }
-  )
-  # 检查是否是 SingleCellExperiment 对象
-  if (!inherits(sce, "Seurat")) {
-    stop("Error: Input file must be a Seurat object!")
+    tryCatch(
+      {
+        saveH5(sce, args$output)
+        message("Successfully saved to HDF5: ", args$output)
+      },
+      error = function(e) {
+        stop(paste("Error saving HDF5 file:", e$message))
+      }
+    )
+  } else if (grepl("\\.h5$", args$input, ignore.case = TRUE)) {
+    # HDF5 → RDS 转换
+    message("Detected HDF5 input, converting to RDS...")
+    sce <- tryCatch(
+      {
+        loadH5(args$input)
+      },
+      error = function(e) {
+        stop(paste("Error loading HDF5 file:", e$message))
+      }
+    )
+    if (!inherits(sce, "Seurat")) {
+      stop("Error: Input HDF5 file must contain a Seurat object!")
+    }
+    tryCatch(
+      {
+        saveRDS(sce, args$output)
+        message("Successfully saved to RDS: ", args$output)
+      },
+      error = function(e) {
+        stop(paste("Error saving RDS file:", e$message))
+      }
+    )
+  } else {
+    stop("Error: Input file must be either .rds or .h5!")
   }
-  # 保存为 HDF5
-  message("Saving to HDF5: ", args$output)
-  tryCatch(
-    {
-      saveH5(sce, args$output)
-      message("Successfully saved to ", args$output)
-    },
-    error = function(e) {
-      stop(paste("Error saving HDF5 file:", e$message))
-    }
-  )
 }
 if (!interactive()) {
   # 命令行参数解析
-  parser <- ArgumentParser(description = "Convert RDS (SingleCellExperiment) to HDF5")
+  parser <- ArgumentParser(description = "Convert between RDS (Seurat) and HDF5 formats")
   parser$add_argument(
     "-i", "--input",
     required = TRUE,
-    help = "Input .rds file (SingleCellExperiment)"
+    help = "Input file (.rds or .h5)"
   )
   parser$add_argument(
     "-o", "--output",
-    default = "output.h5",
-    help = "Output HDF5 file path (default: output.h5)"
+    required = TRUE,
+    help = "Output file path (extension determines format)"
   )
   args <- parser$parse_args()
+  
   # 执行主函数
   tryCatch(
     {
@@ -65,7 +89,7 @@ if (!interactive()) {
     },
     error = function(e) {
       message("Error: ", e$message)
-      quit(status = 1)  # 非零退出码表示错误
+      quit(status = 1)
     }
   )
 }
