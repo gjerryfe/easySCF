@@ -37,6 +37,9 @@ def convert_h5_to_h5ad(input_path, output_path):
             if "umap.harmony" in adata.obsm:
                 adata.obsm["X_umap"] = adata.obsm["umap.harmony"]
                 print("Assigned X_umap from umap.harmony")
+            elif "umap.cca" in adata.obsm:
+                adata.obsm["X_umap"] = adata.obsm["umap.cca"]
+                print("Assigned X_umap from umap.cca")
             elif "umap" in adata.obsm:
                 adata.obsm["X_umap"] = adata.obsm["umap"]
                 print("Assigned X_umap from umap")
