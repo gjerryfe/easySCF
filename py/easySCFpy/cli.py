@@ -6,6 +6,7 @@ import subprocess
 from pathlib import Path
 from easySCFpy import loadH5, saveH5
 import anndata
+import scanpy as sc
 
 def detect_file_type(file_path):
     """Detect if file is R or Python format"""
@@ -31,8 +32,27 @@ def convert_h5_to_h5ad(input_path, output_path):
     """Convert H5 file to h5ad format using Python implementation"""
     try:
         adata = loadH5(input_path)
+        if "X_umap" not in adata.obsm:
+        # 尝试从 umap.harmony 或 umap 获取
+            if "umap.harmony" in adata.obsm:
+                adata.obsm["X_umap"] = adata.obsm["umap.harmony"]
+                print("Assigned X_umap from umap.harmony")
+            elif "umap" in adata.obsm:
+                adata.obsm["X_umap"] = adata.obsm["umap"]
+                print("Assigned X_umap from umap")
+            else:
+                raise KeyError("Neither 'umap.harmony' nor 'umap' found in adata.obsm!")
         adata.write_h5ad(output_path)
         print(f"Successfully converted {input_path} to {output_path}")
+
+        if hasattr(adata, 'raw'):
+            adata_raw = adata.raw.to_adata()
+            sc.pp.normalize_total(adata_raw, target_sum=1e4)  # CPM 标准化
+            sc.pp.log1p(adata_raw)                           # log(x+1) 转换
+            raw_output_path = output_path.replace(".h5ad", "_raw.h5ad")
+            adata_raw.write(raw_output_path)       # 覆盖原文件或新文件
+            print(f"Successfully converted {input_path} to {raw_output_path}")
+
     except Exception as e:
         print(f"Error converting H5 to h5ad: {str(e)}", file=sys.stderr)
         sys.exit(1)
